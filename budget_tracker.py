@@ -83,6 +83,50 @@ def create_tables(db):
     # Commit changes to the database
     db.commit()
 
+# Define functions for menu options
+def add_expense(db):
+    pass
+
+def view_expenses(db):
+    pass
+
+def view_expenses_by_category(db):
+    pass
+
+def add_income(db):
+    pass
+
+def view_income(db):
+    pass
+
+def view_income_by_category(db):
+    pass
+
+def set_budget(db):
+    pass
+
+def view_budget(db):
+    pass
+
+def set_goals(db):
+    pass
+
+def view_goals_progress(db):
+    pass
+
+def main_menu():
+    """Display the main menu options."""
+    print("1. Add expense")
+    print("2. View expenses")
+    print("3. View expenses by category")
+    print("4. Add income")
+    print("5. View income")
+    print("6. View income by category")
+    print("7. Set budget for a category")
+    print("8. View budget for a category")
+    print("9. Set financial goals")
+    print("10. View progress towards financial goals")
+    print("11. Quit")
 
 def main():
     # Connect to the database
@@ -94,5 +138,37 @@ def main():
         print("Tables created successfully.")
     else:
         print("Failed to connect to the database.")
+
+    while True:
+        # Display main menu
+        main_menu()
+        choice = input("Enter your choice: ")
+        
+        # Perform actions based on user choice
+        if choice == '1':
+            add_expense(db)
+        elif choice == '2':
+            view_expenses(db)
+        elif choice == '3':
+            view_expenses_by_category(db)
+        elif choice == '4':
+            add_income(db)
+        elif choice == '5':
+            view_income(db)
+        elif choice == '6':
+            view_income_by_category(db)
+        elif choice == '7':
+            set_budget(db)
+        elif choice == '8':
+            view_budget(db)
+        elif choice == '9':
+            set_goals(db)
+        elif choice == '10':
+            view_goals_progress(db)
+        elif choice == '11':
+            print("\nGoodbye!\n")
+            break
+        else:
+            print("Invalid choice. Please try again.")
 
 main()
