@@ -1,3 +1,4 @@
+import datetime
 import sqlite3
 
 def connect_to_db(db_name="budget_tracker.db"):
@@ -83,9 +84,129 @@ def create_tables(db):
     # Commit changes to the database
     db.commit()
 
+def insert_preset_data(db):
+
+    cursor = db.cursor()
+
+    # Ensure the mtb category exists
+    cursor.execute('''
+        INSERT OR IGNORE INTO expense_categories (name) VALUES (?)
+    ''', ('mtb',))
+    db.commit()
+
+    # Retrieve the category ID for mtb
+    cursor.execute('''
+        SELECT id FROM expense_categories WHERE name = ?
+    ''', ('mtb',))
+    mtb_category_id = cursor.fetchone()[0]
+
+    expenses = [
+        ("2024-02-12", mtb_category_id, "bought mtb", 12000),
+        ("2024-03-01", mtb_category_id, "shifter parts", 500),
+        ("2024-04-05", mtb_category_id, "drivetrain parts", 3500),
+        ("2024-05-03", mtb_category_id, "brake bleeding kit", 400)
+    ]
+
+    cursor.executemany('''
+        INSERT INTO expenses (date, category_id, description, amount)
+        VALUES (?, ?, ?, ?)
+    ''', expenses)
+    db.commit()
+
 # Define functions for menu options
 def add_expense(db):
-    pass
+    """
+    Add a new expense to the database.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    while True:
+        # Prompt user for expense details
+        date = input("Enter the date of the expense (YYYY-MM-DD): ").lower()
+        
+        # Validate date format
+        try:
+            datetime.datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format. Please enter the date in YYYY-MM-DD format.")
+            continue
+        
+        category_name = input("Enter the category name of the expense: ").lower()
+        description = input("Enter a description of the expense: ").lower()
+
+        # Prompt user for the amount of the expense
+        while True:
+            amount_input = input("Enter the amount of the expense: ").strip()
+            if amount_input == "":
+                print("Amount cannot be empty. Please enter a valid amount.")
+                continue
+            try:
+                amount = float(amount_input)
+                break
+            except ValueError:
+                print("Invalid amount format. Please enter a valid number.")
+
+        try:
+            # Create a cursor object to execute SQL commands
+            cursor = db.cursor()
+
+            # Check if the category already exists
+            cursor.execute('''
+                SELECT id FROM expense_categories WHERE name = ?
+            ''', (category_name,))
+            category = cursor.fetchone()
+            
+            # If category does not exist, create it
+            if category is None:
+                cursor.execute('''
+                    INSERT INTO expense_categories (name) VALUES (?)
+                ''', (category_name,))
+                db.commit()
+
+                # Get the new category id
+                category_id = cursor.lastrowid
+            else:
+                # Use existing category id
+                category_id = category[0]
+
+            # Retrieve the latest ID from the expenses table
+            cursor.execute("SELECT MAX(id) FROM expenses")
+            latest_id = cursor.fetchone()[0]
+
+            # Increment the latest ID by 1 to generate a new ID
+            new_id = latest_id + 1 if latest_id is not None else 1
+
+            # Insert the new expense into the 'expenses' table
+            cursor.execute('''
+                INSERT INTO expenses (id, date, category_id, description, amount)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (new_id, date, category_id, description, amount))
+
+            # Commit the transaction
+            db.commit()
+                        
+            # Prompt user for confirmation
+            while True:
+                confirm = input("Do you confirm to add this expense? (yes/no): ").lower()
+                if confirm == 'yes':
+                    print("Expense added successfully.")
+                    return
+                elif confirm == 'no':
+                    cursor.execute("DELETE FROM expenses WHERE id=?", (new_id,))
+                    db.commit()
+                    print("Expense not added.")
+                    return  # Return to main menu
+                else:
+                    print("Invalid choice. Please enter 'yes' or 'no'.")
+
+        except sqlite3.Error as e:
+            # Print error message if insertion fails
+            print(f"Error adding expense: {e}")
+
 
 def view_expenses(db):
     pass
@@ -135,7 +256,9 @@ def main():
     # Create tables if they don't exist
     if db:
         create_tables(db)
-        print("Tables created successfully.")
+        # insert_preset_data(db)
+
+        print("Tables created and preset data inserted successfully.")
     else:
         print("Failed to connect to the database.")
 
