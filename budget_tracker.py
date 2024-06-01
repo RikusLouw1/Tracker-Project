@@ -215,7 +215,97 @@ def view_expenses_by_category(db):
     pass
 
 def add_income(db):
-    pass
+    """
+    Add a new income to the database.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    while True:
+        # Prompt user for income details
+        date = input("Enter the date of the income (YYYY-MM-DD): ").lower()
+        
+        # Validate date format
+        try:
+            datetime.datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format. Please enter the date in YYYY-MM-DD format.")
+            continue
+        
+        category_name = input("Enter the category name of the income: ").lower()
+        description = input("Enter a description of the income: ").lower()
+
+        # Prompt user for the amount of the income
+        while True:
+            amount_input = input("Enter the amount of the income: ").strip()
+            if amount_input == "":
+                print("Amount cannot be empty. Please enter a valid amount.")
+                continue
+            try:
+                amount = float(amount_input)
+                break
+            except ValueError:
+                print("Invalid amount format. Please enter a valid number.")
+
+        try:
+            # Create a cursor object to execute SQL commands
+            cursor = db.cursor()
+
+            # Check if the category already exists
+            cursor.execute('''
+                SELECT id FROM income_categories WHERE name = ?
+            ''', (category_name,))
+            category = cursor.fetchone()
+            
+            # If category does not exist, create it
+            if category is None:
+                cursor.execute('''
+                    INSERT INTO income_categories (name) VALUES (?)
+                ''', (category_name,))
+                db.commit()
+
+                # Get the new category id
+                category_id = cursor.lastrowid
+            else:
+                # Use existing category id
+                category_id = category[0]
+
+            # Retrieve the latest ID from the income table
+            cursor.execute("SELECT MAX(id) FROM income")
+            latest_id = cursor.fetchone()[0]
+
+            # Increment the latest ID by 1 to generate a new ID
+            new_id = latest_id + 1 if latest_id is not None else 1
+
+            # Insert the new income into the 'income' table
+            cursor.execute('''
+                INSERT INTO income (id, date, category_id, description, amount)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (new_id, date, category_id, description, amount))
+
+            # Commit the transaction
+            db.commit()
+                        
+            # Prompt user for confirmation
+            while True:
+                confirm = input("Do you confirm to add this income? (yes/no): ").lower()
+                if confirm == 'yes':
+                    print("Income added successfully.")
+                    return
+                elif confirm == 'no':
+                    cursor.execute("DELETE FROM income WHERE id=?", (new_id,))
+                    db.commit()
+                    print("Income not added.")
+                    return  # Return to main menu
+                else:
+                    print("Invalid choice. Please enter 'yes' or 'no'.")
+
+        except sqlite3.Error as e:
+            # Print error message if insertion fails
+            print(f"Error adding income: {e}")
 
 def view_income(db):
     pass
