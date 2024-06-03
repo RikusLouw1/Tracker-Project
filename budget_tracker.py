@@ -237,11 +237,15 @@ def view_expenses(db):
         print("No expenses found.\n")
         return
 
-    # Display all expenses
+    # Display all expenses and calculate total amount
+    total_amount = 0
     print("Expenses:")
     for expense in expenses:
         print(f"ID: {expense[0]}, Date: {expense[1]}, Category: {expense[2]}, "
               f"Description: {expense[3]}, Amount: {expense[4]}\n")
+        total_amount += expense[4]
+
+    print(f"Total Amount: {total_amount}\n")
 
     while True:
         action = input("Enter the ID of the expense to update/delete, or "
@@ -355,9 +359,112 @@ def view_expenses(db):
         else:
             print("Invalid choice. Please enter 'update' or 'delete'.\n")
 
-
 def view_expenses_by_category(db):
-    pass
+    """
+    View all expenses by category, update a category name or delete a category 
+    and all associated expenses.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Fetch all expense categories from the database
+    cursor.execute('SELECT id, name FROM expense_categories')
+    categories = cursor.fetchall()
+
+    if not categories:
+        print("No expense categories found.\n")
+        return
+
+    # Display all categories
+    print("Expense Categories:\n")
+    for category in categories:
+        print(f"ID: {category[0]}, Name: {category[1]}\n")
+
+    while True:
+        action = input("Enter the ID of the category to view/update/delete, or "
+                       "'back' to return to the main menu: ").strip().lower()
+        
+        if action == 'back':
+            # Check for categories with no associated expenses and delete them
+            cursor.execute('''
+                DELETE FROM expense_categories 
+                WHERE id NOT IN (SELECT DISTINCT category_id FROM expenses)
+            ''')
+            db.commit()
+            return
+
+        try:
+            category_id = int(action)
+        except ValueError:
+            print("Invalid ID. Please enter a valid category ID.\n")
+            continue
+
+        # Check if the entered ID is valid
+        cursor.execute('SELECT id FROM expense_categories WHERE id = ?', (category_id,))
+        if not cursor.fetchone():
+            print("Category ID not found. Please enter a valid category ID.\n")
+            continue
+
+        # Fetch all expenses associated with the selected category
+        cursor.execute('''
+            SELECT expenses.id, expenses.date, expense_categories.name, 
+                   expenses.description, expenses.amount
+            FROM expenses
+            JOIN expense_categories ON expenses.category_id = expense_categories.id
+            WHERE expense_categories.id = ?
+        ''', (category_id,))
+        expenses = cursor.fetchall()
+
+        if not expenses:
+            print(f"No expenses found for category ID {category_id}.\n")
+        else:
+            total_amount = 0
+            print(f"Expenses for Category ID {category_id}:\n")
+            for expense in expenses:
+                print(f"ID: {expense[0]}, Date: {expense[1]}, Category: {expense[2]}, "
+                      f"Description: {expense[3]}, Amount: {expense[4]}\n")
+                total_amount += expense[4]
+            print(f"Total Amount for Category ID {category_id}: {total_amount}\n")
+
+        # Ask user for the action to perform on the selected category
+        update_delete = input("Would you like to update or delete this "
+                              "category? (update/delete/back): ").strip().lower()
+        
+        if update_delete == 'delete':
+            try:
+                # Delete all expenses associated with the category
+                cursor.execute('DELETE FROM expenses WHERE category_id = ?', (category_id,))
+                # Delete the category itself
+                cursor.execute('DELETE FROM expense_categories WHERE id = ?', (category_id,))
+                db.commit()
+                print(f"Category and all associated expenses deleted successfully.\n")
+            except sqlite3.Error as e:
+                print(f"Error deleting category: {e}\n")
+            return
+
+        elif update_delete == 'update':
+            new_name = input("Enter the new name for the category, or press enter to keep the current name: ").strip()
+            
+            if new_name:
+                try:
+                    # Update the category name in the database
+                    cursor.execute('UPDATE expense_categories SET name = ? WHERE id = ?', (new_name, category_id))
+                    db.commit()
+                    print("Category name updated successfully.\n")
+                except sqlite3.Error as e:
+                    print(f"Error updating category name: {e}\n")
+                return
+            
+        elif update_delete == 'back':
+            continue
+
+        else:
+            print("Invalid choice. Please enter 'update' or 'delete'.\n")
 
 def add_income(db):
     """
@@ -480,11 +587,15 @@ def view_income(db):
         print("No income found.\n")
         return
 
-    # Display all income
+    # Display all income and calculate total amount
+    total_amount = 0
     print("\nIncomes:\n")
     for income in incomes:
         print(f"ID: {income[0]}, Date: {income[1]}, Category: {income[2]}, "
               f"Description: {income[3]}, Amount: {income[4]}\n")
+        total_amount += income[4]
+
+    print(f"Total Amount: {total_amount}\n")
 
     while True:
         action = input("Enter the ID of the income to update/delete, or 'back'"
@@ -597,9 +708,112 @@ def view_income(db):
         else:
             print("Invalid choice. Please enter 'update' or 'delete'.\n")
 
-
 def view_income_by_category(db):
-    pass
+    """
+    View all incomes by category, update a category name or delete a category
+    and all associated incomes.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Fetch all income categories from the database
+    cursor.execute('SELECT id, name FROM income_categories')
+    categories = cursor.fetchall()
+
+    if not categories:
+        print("No income categories found.\n")
+        return
+
+    # Display all categories
+    print("Income Categories:\n")
+    for category in categories:
+        print(f"ID: {category[0]}, Name: {category[1]}\n")
+
+    while True:
+        action = input("Enter the ID of the category to view/update/delete, or "
+                       "'back' to return to the main menu: ").strip().lower()
+
+        if action == 'back':
+            # Check for categories with no associated incomes and delete them
+            cursor.execute('''
+                DELETE FROM income_categories
+                WHERE id NOT IN (SELECT DISTINCT category_id FROM income)
+            ''')
+            db.commit()
+            return
+
+        try:
+            category_id = int(action)
+        except ValueError:
+            print("Invalid ID. Please enter a valid category ID.\n")
+            continue
+
+        # Check if the entered ID is valid
+        cursor.execute('SELECT id FROM income_categories WHERE id = ?', (category_id,))
+        if not cursor.fetchone():
+            print("Category ID not found. Please enter a valid category ID.\n")
+            continue
+
+        # Fetch all incomes associated with the selected category
+        cursor.execute('''
+            SELECT income.id, income.date, income_categories.name,
+                   income.description, income.amount
+            FROM income
+            JOIN income_categories ON income.category_id = income_categories.id
+            WHERE income_categories.id = ?
+        ''', (category_id,))
+        incomes = cursor.fetchall()
+
+        if not incomes:
+            print(f"No incomes found for category ID {category_id}.\n")
+        else:
+            total_amount = 0
+            print(f"Incomes for Category ID {category_id}:\n")
+            for income in incomes:
+                print(f"ID: {income[0]}, Date: {income[1]}, Category: {income[2]}, "
+                      f"Description: {income[3]}, Amount: {income[4]}\n")
+                total_amount += income[4]
+            print(f"Total Amount for Category ID {category_id}: {total_amount}\n")
+
+        # Ask user for the action to perform on the selected category
+        update_delete = input("Would you like to update or delete this "
+                              "category? (update/delete/back): ").strip().lower()
+
+        if update_delete == 'delete':
+            try:
+                # Delete all incomes associated with the category
+                cursor.execute('DELETE FROM income WHERE category_id = ?', (category_id,))
+                # Delete the category itself
+                cursor.execute('DELETE FROM income_categories WHERE id = ?', (category_id,))
+                db.commit()
+                print(f"Category and all associated incomes deleted successfully.\n")
+            except sqlite3.Error as e:
+                print(f"Error deleting category: {e}\n")
+            return
+
+        elif update_delete == 'update':
+            new_name = input("Enter the new name for the category, or press enter to keep the current name: ").strip()
+
+            if new_name:
+                try:
+                    # Update the category name in the database
+                    cursor.execute('UPDATE income_categories SET name = ? WHERE id = ?', (new_name, category_id))
+                    db.commit()
+                    print("Category name updated successfully.\n")
+                except sqlite3.Error as e:
+                    print(f"Error updating category name: {e}\n")
+                return
+            
+        elif update_delete == 'back':
+            continue
+
+        else:
+            print("Invalid choice. Please enter 'update' or 'delete'.\n")
 
 def set_budget(db):
     pass
