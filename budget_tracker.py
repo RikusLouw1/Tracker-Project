@@ -254,7 +254,7 @@ def view_expenses(db):
 
     # Display all expenses and calculate total amount
     total_amount = 0
-    print("Expenses:")
+    print("\nExpenses:\n")
     for expense in expenses:
         print(f"ID: {expense[0]}, Date: {expense[1]}, Category: {expense[2]}, "
               f"Description: {expense[3]}, Amount: {expense[4]}\n")
@@ -284,7 +284,7 @@ def view_expenses(db):
             continue
 
         # Ask user for the action to perform on the selected expense
-        update_delete = input("Would you like to update or delete this "
+        update_delete = input("\nWould you like to update or delete this "
                               "expense? (update/delete): \n").strip().lower()
         
         if update_delete == 'delete':
@@ -293,7 +293,7 @@ def view_expenses(db):
                     DELETE FROM expenses WHERE id = ?
                 ''', (expense_id,))
                 db.commit()
-                print("Expense deleted successfully.\n")
+                print("\nExpense deleted successfully.\n")
             except sqlite3.Error as e:
                 print(f"Error deleting expense: {e}\n")
             return
@@ -1139,14 +1139,14 @@ def main():
         create_tables(db)
         # insert_preset_data(db)
 
-        print("Tables created and preset data inserted successfully.")
+        print("\nTables created and preset data inserted successfully.\n")
     else:
-        print("Failed to connect to the database.")
+        print("\nFailed to connect to the database.\n")
 
     while True:
         # Display main menu
         main_menu()
-        choice = input("Enter your choice: ")
+        choice = input("\nEnter your choice: ")
         
         # Perform actions based on user choice
         if choice == '1':
