@@ -3,13 +3,15 @@ import sqlite3
 
 def connect_to_db(db_name="budget_tracker.db"):
     """
-    Connect to the SQLite database. If the database does not exist, it will be created.
+    Connect to the SQLite database. If the database does not exist, it will be 
+    created.
     
     Args:
         db_name (str): The name of the database file.
     
     Returns:
-        sqlite3.Connection: Connection object to the SQLite database, or None if the connection fails.
+        sqlite3.Connection: Connection object to the SQLite database, or None 
+        if the connection fails.
     """
     try:
         db = sqlite3.connect(db_name)
@@ -20,7 +22,8 @@ def connect_to_db(db_name="budget_tracker.db"):
 
 def create_tables(db):
     """
-    Create tables in the budget_tracker.db database to store expenses, income, categories, and budgets.
+    Create tables in the budget_tracker.db database to store expenses, income, 
+    categories, and budgets.
 
     Args:
         db (sqlite3.Connection): Connection object to the SQLite database.
@@ -35,7 +38,8 @@ def create_tables(db):
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS expense_categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
+            name TEXT NOT NULL UNIQUE,
+            budget_limit REAL
         )
     ''')
 
@@ -78,6 +82,17 @@ def create_tables(db):
             category_id INTEGER NOT NULL,
             amount REAL NOT NULL,
             FOREIGN KEY (category_id) REFERENCES expense_categories (id)
+        )
+    ''')
+
+    # Create table for financial goals
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS financial_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            goal_amount REAL NOT NULL,
+            target_date TEXT NOT NULL,
+            category_id INTEGER,
+            FOREIGN KEY (category_id) REFERENCES expense_categories(id)
         )
     ''')
 
@@ -197,7 +212,7 @@ def add_expense(db):
                 confirm = input("Do you confirm to add this expense? "
                                 "(yes/no): ").lower()
                 if confirm == 'yes':
-                    print("Expense added successfully.")
+                    print("\nExpense added successfully.\n")
                     return
                 elif confirm == 'no':
                     cursor.execute("DELETE FROM expenses WHERE id=?", 
@@ -386,8 +401,9 @@ def view_expenses_by_category(db):
         print(f"ID: {category[0]}, Name: {category[1]}\n")
 
     while True:
-        action = input("Enter the ID of the category to view/update/delete, or "
-                       "'back' to return to the main menu: ").strip().lower()
+        action = input("Enter the ID of the category to view/update/delete, "
+                       "or 'back' to return to the main menu: "
+                       ).strip().lower()
         
         if action == 'back':
             # Check for categories with no associated expenses and delete them
@@ -405,7 +421,8 @@ def view_expenses_by_category(db):
             continue
 
         # Check if the entered ID is valid
-        cursor.execute('SELECT id FROM expense_categories WHERE id = ?', (category_id,))
+        cursor.execute('SELECT id FROM expense_categories WHERE id = ?', 
+                       (category_id,))
         if not cursor.fetchone():
             print("Category ID not found. Please enter a valid category ID.\n")
             continue
@@ -415,7 +432,8 @@ def view_expenses_by_category(db):
             SELECT expenses.id, expenses.date, expense_categories.name, 
                    expenses.description, expenses.amount
             FROM expenses
-            JOIN expense_categories ON expenses.category_id = expense_categories.id
+            JOIN expense_categories ON expenses.category_id = 
+                       expense_categories.id
             WHERE expense_categories.id = ?
         ''', (category_id,))
         expenses = cursor.fetchall()
@@ -426,34 +444,42 @@ def view_expenses_by_category(db):
             total_amount = 0
             print(f"Expenses for Category ID {category_id}:\n")
             for expense in expenses:
-                print(f"ID: {expense[0]}, Date: {expense[1]}, Category: {expense[2]}, "
-                      f"Description: {expense[3]}, Amount: {expense[4]}\n")
+                print(f"ID: {expense[0]}, Date: {expense[1]}, "
+                      f"Category: {expense[2]}, Description: {expense[3]}, "
+                      f"Amount: {expense[4]}\n")
                 total_amount += expense[4]
-            print(f"Total Amount for Category ID {category_id}: {total_amount}\n")
+            print(f"Total Amount for Category ID {category_id}: {total_amount}"
+                  "\n")
 
         # Ask user for the action to perform on the selected category
         update_delete = input("Would you like to update or delete this "
-                              "category? (update/delete/back): ").strip().lower()
+                              "category? (update/delete/back): "
+                              ).strip().lower()
         
         if update_delete == 'delete':
             try:
                 # Delete all expenses associated with the category
-                cursor.execute('DELETE FROM expenses WHERE category_id = ?', (category_id,))
+                cursor.execute('DELETE FROM expenses WHERE category_id = ?', 
+                               (category_id,))
                 # Delete the category itself
-                cursor.execute('DELETE FROM expense_categories WHERE id = ?', (category_id,))
+                cursor.execute('DELETE FROM expense_categories WHERE id = ?', 
+                               (category_id,))
                 db.commit()
-                print(f"Category and all associated expenses deleted successfully.\n")
+                print("Category and all associated expenses deleted "
+                      "successfully.\n")
             except sqlite3.Error as e:
                 print(f"Error deleting category: {e}\n")
             return
 
         elif update_delete == 'update':
-            new_name = input("Enter the new name for the category, or press enter to keep the current name: ").strip()
+            new_name = input("Enter the new name for the category, or press "
+                             "enter to keep the current name: ").strip()
             
             if new_name:
                 try:
                     # Update the category name in the database
-                    cursor.execute('UPDATE expense_categories SET name = ? WHERE id = ?', (new_name, category_id))
+                    cursor.execute('UPDATE expense_categories SET name = ? '
+                                   'WHERE id = ?', (new_name, category_id))
                     db.commit()
                     print("Category name updated successfully.\n")
                 except sqlite3.Error as e:
@@ -548,7 +574,7 @@ def add_income(db):
                 confirm = input("Do you confirm to add this income? (yes/no): "
                                 ).lower()
                 if confirm == 'yes':
-                    print("Income added successfully.\n")
+                    print("\nIncome added successfully.\n")
                     return
                 elif confirm == 'no':
                     cursor.execute("DELETE FROM income WHERE id=?", (new_id,))
@@ -735,8 +761,8 @@ def view_income_by_category(db):
         print(f"ID: {category[0]}, Name: {category[1]}\n")
 
     while True:
-        action = input("Enter the ID of the category to view/update/delete, or "
-                       "'back' to return to the main menu: ").strip().lower()
+        action = input("Enter the ID of the category to view/update/delete, "
+                       "or 'back' to return to the main menu: ").strip().lower()
 
         if action == 'back':
             # Check for categories with no associated incomes and delete them
@@ -754,7 +780,8 @@ def view_income_by_category(db):
             continue
 
         # Check if the entered ID is valid
-        cursor.execute('SELECT id FROM income_categories WHERE id = ?', (category_id,))
+        cursor.execute('SELECT id FROM income_categories WHERE id = ?', 
+                       (category_id,))
         if not cursor.fetchone():
             print("Category ID not found. Please enter a valid category ID.\n")
             continue
@@ -775,34 +802,42 @@ def view_income_by_category(db):
             total_amount = 0
             print(f"Incomes for Category ID {category_id}:\n")
             for income in incomes:
-                print(f"ID: {income[0]}, Date: {income[1]}, Category: {income[2]}, "
-                      f"Description: {income[3]}, Amount: {income[4]}\n")
+                print(f"ID: {income[0]}, Date: {income[1]}, "
+                      f"Category: {income[2]}, Description: {income[3]}, "
+                      f"Amount: {income[4]}\n")
                 total_amount += income[4]
-            print(f"Total Amount for Category ID {category_id}: {total_amount}\n")
+            print(f"Total Amount for Category ID {category_id}: "
+                  f"{total_amount}\n")
 
         # Ask user for the action to perform on the selected category
         update_delete = input("Would you like to update or delete this "
-                              "category? (update/delete/back): ").strip().lower()
+                              "category? (update/delete/back): "
+                              ).strip().lower()
 
         if update_delete == 'delete':
             try:
                 # Delete all incomes associated with the category
-                cursor.execute('DELETE FROM income WHERE category_id = ?', (category_id,))
+                cursor.execute('DELETE FROM income WHERE category_id = ?', 
+                               (category_id,))
                 # Delete the category itself
-                cursor.execute('DELETE FROM income_categories WHERE id = ?', (category_id,))
+                cursor.execute('DELETE FROM income_categories WHERE id = ?', 
+                               (category_id,))
                 db.commit()
-                print(f"Category and all associated incomes deleted successfully.\n")
+                print("Category and all associated incomes deleted "
+                      "successfully.\n")
             except sqlite3.Error as e:
                 print(f"Error deleting category: {e}\n")
             return
 
         elif update_delete == 'update':
-            new_name = input("Enter the new name for the category, or press enter to keep the current name: ").strip()
+            new_name = input("Enter the new name for the category, or press "
+                             "enter to keep the current name: ").strip()
 
             if new_name:
                 try:
                     # Update the category name in the database
-                    cursor.execute('UPDATE income_categories SET name = ? WHERE id = ?', (new_name, category_id))
+                    cursor.execute('UPDATE income_categories SET name = ? '
+                                   'WHERE id = ?', (new_name, category_id))
                     db.commit()
                     print("Category name updated successfully.\n")
                 except sqlite3.Error as e:
@@ -816,16 +851,270 @@ def view_income_by_category(db):
             print("Invalid choice. Please enter 'update' or 'delete'.\n")
 
 def set_budget(db):
-    pass
+    """
+    Set a budget limit for a specific expense category.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Fetch expense categories from the database
+    cursor.execute('SELECT id, name FROM expense_categories')
+    categories = cursor.fetchall()
+
+    if not categories:
+        print("No expense categories found.\n")
+        return
+
+    # Display available categories
+    print("Available Expense Categories:")
+    for category in categories:
+        print(f"ID: {category[0]}, Name: {category[1]}")
+
+    # Prompt user to select a category
+    while True:
+        try:
+            category_id = int(input("\nEnter the ID of the category to set the budget for: ").strip())
+            break
+        except ValueError:
+            print("Invalid input. Please enter a valid category ID.\n")
+
+    # Check if the entered category ID exists
+    if category_id not in [cat[0] for cat in categories]:
+        print("Invalid category ID. Please select a valid category.\n")
+        return
+
+    # Fetch the name of the selected category
+    category_name = [cat[1] for cat in categories if cat[0] == category_id][0]
+
+    # Prompt user to enter the budget limit
+    while True:
+        budget_limit_input = input(f"Enter the budget limit for '{category_name}': ").strip()
+        try:
+            budget_limit = float(budget_limit_input)
+            if budget_limit <= 0:
+                raise ValueError("Budget limit must be a positive number.")
+            break
+        except ValueError as ve:
+            print(f"Invalid input: {ve}\n")
+
+    try:
+        # Update the budget limit for the category in the database
+        cursor.execute('''
+            UPDATE expense_categories
+            SET budget_limit = ?
+            WHERE id = ?
+        ''', (budget_limit, category_id))
+        db.commit()
+        print(f"Budget limit for '{category_name}' set successfully.\n")
+    except sqlite3.Error as e:
+        print(f"Error setting budget limit: {e}\n")
 
 def view_budget(db):
-    pass
+    """
+    View the set budget, actual expenses, and remaining budget for a specific category.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Fetch all expense categories from the database
+    cursor.execute('SELECT id, name FROM expense_categories')
+    categories = cursor.fetchall()
+
+    if not categories:
+        print("No expense categories found.")
+        return
+
+    print("Expense Categories:\n")
+    for category in categories:
+        print(f"ID: {category[0]}, Name: {category[1]}")
+
+    while True:
+        category_id_input = input("\nEnter the ID of the category to view the budget, or 'back' to return to the main menu: ").strip().lower()
+        
+        if category_id_input == 'back':
+            return
+
+        try:
+            category_id = int(category_id_input)
+        except ValueError:
+            print("Invalid ID. Please enter a valid category ID.")
+            continue
+
+        # Check if the entered ID is valid
+        valid_category_ids = [category[0] for category in categories]
+        if category_id not in valid_category_ids:
+            print("Category ID not found. Please enter a valid category ID.")
+            continue
+
+        # Fetch the set budget for the category
+        cursor.execute('SELECT budget_limit FROM expense_categories WHERE id = ?', (category_id,))
+        set_budget = cursor.fetchone()[0]
+
+        # Fetch the total expenses for the category
+        cursor.execute('SELECT SUM(amount) FROM expenses WHERE category_id = ?', (category_id,))
+        total_expenses = cursor.fetchone()[0]
+        total_expenses = total_expenses if total_expenses else 0
+
+        # Calculate the remaining budget
+        remaining_budget = set_budget - total_expenses
+
+        print(f"\nBudget Overview for Category ID {category_id} ({[category[1] for category in categories if category[0] == category_id][0]}):")
+        print(f"Set Budget: {set_budget}")
+        print(f"Total Expenses: {total_expenses}")
+        print(f"Remaining Budget: {remaining_budget}\n")
+
+        return
 
 def set_goals(db):
-    pass
+    """
+    Set a financial goal, such as saving a specific amount by a target date.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Input the goal amount
+    while True:
+        goal_amount_input = input("Enter the goal amount: ").strip()
+        try:
+            goal_amount = float(goal_amount_input)
+            if goal_amount <= 0:
+                raise ValueError
+            break
+        except ValueError:
+            print("Invalid amount. Please enter a positive number.")
+
+    # Input the target date
+    while True:
+        target_date = input("Enter the target date (YYYY-MM-DD): ").strip()
+        try:
+            datetime.datetime.strptime(target_date, "%Y-%m-%d")
+            break
+        except ValueError:
+            print("Invalid date format. Please enter the date in YYYY-MM-DD "
+                  "format.")
+
+    # Choose a category (optional)
+    cursor.execute('SELECT id, name FROM expense_categories')
+    categories = cursor.fetchall()
+
+    category_id = None
+    if categories:
+        print("Expense Categories:")
+        for category in categories:
+            print(f"ID: {category[0]}, Name: {category[1]}")
+
+        category_input = input("Enter the ID of the category related to this "
+                               "goal, or press enter to skip: ").strip()
+        if category_input:
+            try:
+                category_id = int(category_input)
+                if category_id not in [category[0] for category in categories]:
+                    print("Category ID not found. Skipping category "
+                          "selection.")
+                    category_id = None
+            except ValueError:
+                print("Invalid ID. Skipping category selection.")
+
+    # Insert the goal into the database
+    try:
+        cursor.execute('''
+            INSERT INTO financial_goals (goal_amount, target_date, category_id) 
+            VALUES (?, ?, ?)
+        ''', (goal_amount, target_date, category_id))
+        db.commit()
+        print("Financial goal set successfully.")
+    except sqlite3.Error as e:
+        print(f"Error setting financial goal: {e}")
 
 def view_goals_progress(db):
-    pass
+    """
+    View progress towards financial goals, including the amount saved/spent 
+    and the remaining amount needed to achieve each goal.
+
+    Args:
+        db (sqlite3.Connection): Connection object to the SQLite database.
+
+    Returns:
+        None
+    """
+    cursor = db.cursor()
+
+    # Fetch all financial goals from the database
+    cursor.execute('''
+        SELECT financial_goals.id, financial_goals.goal_amount, 
+                   financial_goals.target_date, expense_categories.name
+        FROM financial_goals
+        LEFT JOIN expense_categories ON financial_goals.category_id = 
+                   expense_categories.id
+    ''')
+    goals = cursor.fetchall()
+
+    if not goals:
+        print("No financial goals found.\n")
+        return
+
+    print("Financial Goals:\n")
+
+    for goal in goals:
+        goal_id, goal_amount, target_date, category_name = goal
+        category_name = category_name if category_name else "General"
+
+        # Calculate the progress towards the goal
+        if category_name == "General":
+            cursor.execute('SELECT SUM(amount) FROM income')
+            total_income = cursor.fetchone()[0] or 0
+
+            cursor.execute('SELECT SUM(amount) FROM expenses')
+            total_expenses = cursor.fetchone()[0] or 0
+
+            progress = total_income - total_expenses
+        else:
+            cursor.execute('''
+                SELECT SUM(amount) FROM income
+                JOIN income_categories ON income.category_id = 
+                           income_categories.id
+                WHERE income_categories.name = ?
+            ''', (category_name,))
+            total_income = cursor.fetchone()[0] or 0
+
+            cursor.execute('''
+                SELECT SUM(amount) FROM expenses
+                JOIN expense_categories ON expenses.category_id = 
+                           expense_categories.id
+                WHERE expense_categories.name = ?
+            ''', (category_name,))
+            total_expenses = cursor.fetchone()[0] or 0
+
+            progress = total_income - total_expenses
+
+        remaining = goal_amount - progress
+        progress_percentage = (progress / goal_amount) * 100 if goal_amount != 0 else 0
+
+        print(f"Goal ID: {goal_id}")
+        print(f"Goal Amount: {goal_amount}")
+        print(f"Target Date: {target_date}")
+        print(f"Category: {category_name}")
+        print(f"Progress: {progress} ({progress_percentage:.2f}%)")
+        print(f"Remaining Amount: {remaining}\n")
+
+        if remaining < 0:
+            print(f"Congratulations, you have achieved the {category_name} "
+                  f"financial goal!\n")
 
 def main_menu():
     """Display the main menu options."""
