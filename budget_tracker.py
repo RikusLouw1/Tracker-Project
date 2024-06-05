@@ -960,6 +960,10 @@ def view_budget(db):
         cursor.execute('SELECT budget_limit FROM expense_categories WHERE id = ?', (category_id,))
         set_budget = cursor.fetchone()[0]
 
+        if set_budget is None:
+            print(f"No budget has been set for category ID {category_id} ({[category[1] for category in categories if category[0] == category_id][0]}).\n")
+            continue
+
         # Fetch the total expenses for the category
         cursor.execute('SELECT SUM(amount) FROM expenses WHERE category_id = ?', (category_id,))
         total_expenses = cursor.fetchone()[0]
@@ -1137,7 +1141,7 @@ def main():
     # Create tables if they don't exist
     if db:
         create_tables(db)
-        # insert_preset_data(db)
+        insert_preset_data(db)
 
         print("\nTables created and preset data inserted successfully.\n")
     else:
